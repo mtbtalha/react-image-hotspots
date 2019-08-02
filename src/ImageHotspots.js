@@ -25,10 +25,18 @@ class ImageHotspots extends React.Component {
         offsetY: undefined
       },
       minimap: {
-        offsetX: 0,
-        offsetY: 0,
+        initialWidth: 100,
+        initialHeight: 100,
         width: undefined,
-        height: undefined
+        height: undefined,
+        ratio: undefined,
+        offsetX: 0,
+        offsetY: 0
+      },
+      guide: {
+        width: undefined,
+        height: undefined,
+        ratio: undefined,
       },
       hideFullscreenControl: false,
       hideZoomControls: false,
@@ -62,6 +70,7 @@ class ImageHotspots extends React.Component {
 
     this.setState({
       container: { width, height, ratio, orientation },
+      guide: { ratio },
       hideFullscreenControl,
       hideZoomControls,
       hideHotspots,
@@ -98,13 +107,15 @@ class ImageHotspots extends React.Component {
   }
 
   whileDrag = (event) => {
-    const { image } = this.state
+    const { image, minimap } = this.state
     const cursorX = event.clientX
     const cursorY = event.clientY
     const deltaX = cursorX - this.state.cursorX
     const deltaY = cursorY - this.state.cursorY
     const newOffsetX = image.offsetX + deltaX
     const newOffsetY = image.offsetY + deltaY
+
+    console.log(newOffsetX, newOffsetY)
 
     this.setState(state => ({
       ...state,
@@ -114,6 +125,13 @@ class ImageHotspots extends React.Component {
         ...image,
         offsetX: newOffsetX,
         offsetY: newOffsetY
+      },
+      minimap: {
+        ...minimap,
+        // offsetX: newOffsetX > 0 ? 0 : -newOffsetX,
+        // offsetY: newOffsetY > 0 ? 0 : -newOffsetY
+        offsetX: -newOffsetX / (image.width/100),
+        offsetY: -newOffsetY / (image.height/100)
       }
     }))
   }
@@ -135,6 +153,11 @@ class ImageHotspots extends React.Component {
         ...state.image,
         offsetX: image.offsetX >= 0 ? 0 : deltaX >= 0 ? offsetXMax : image.offsetX,
         offsetY: image.offsetY >= 0 ? 0 : deltaY >= 0 ? offsetYMax : image.offsetY
+      },
+      minimap: {
+        ...state.minimap,
+        offsetX: image.offsetX >= 0 ? 0 : deltaX >= 0 ? offsetXMax : -image.offsetX / (image.width/100),
+        offsetY: image.offsetY >= 0 ? 0 : deltaY >= 0 ? offsetYMax : -image.offsetY / (image.height/100)
       },
       dragging: false
     }))
@@ -282,62 +305,6 @@ class ImageHotspots extends React.Component {
     }
   }
 
-  whileDragGuide = (evt, guideStyle, minimapStyle) => {
-    const { minimap, image } = this.state
-    const cursorX = evt.clientX
-    const cursorY = evt.clientY
-    const dx = cursorX - this.state.mcursorX
-    const dy = cursorY - this.state.mcursorY
-    const newOffsetX = minimap.offsetX + dx
-    const newOffsetY = minimap.offsetY + dy
-
-    const ratio = (minimapStyle.width * minimapStyle.height) / (guideStyle.width * guideStyle.height)
-    // 1. Calculate new offsetX and offsetY for an image and set the state
-    // partially working
-    let imageOffsetX
-    let imageOffsetY
-    if (image.orientation === 'landscape') {
-      imageOffsetX = newOffsetX * image.scale * image.ratio * ratio * -1
-      imageOffsetY = newOffsetY * image.scale * image.ratio * ratio * -1
-    } else {
-      imageOffsetX = newOffsetX * image.scale * image.ratio * ratio * -1
-      imageOffsetY = newOffsetY * image.scale * image.ratio * ratio * -1
-    }
-
-    // 2. Set the boundary for the guide
-    // not working
-    const minBoundX = minimapStyle.left
-    const minBoundY = minimapStyle.bottom
-
-    const maxBoundX = minimapStyle.left + minimapStyle.width
-    const maxBoundY = minimapStyle.bottom + minimapStyle.height
-
-    const guideOffsetX = Math.max(minBoundX, Math.min(newOffsetX, maxBoundX)) + 'px'
-    const guideOffsetY = Math.max(minBoundY, Math.min(newOffsetY, maxBoundY)) + 'px'
-
-    this.setState(state => ({
-      ...state,
-      mcursorX: cursorX,
-      mcursorY: cursorY,
-      image: {
-        ...image,
-        offsetX: imageOffsetX,
-        offsetY: imageOffsetY
-      },
-      minimap: {
-        offsetX: newOffsetX, // guideOffsetX,
-        offsetY: newOffsetY // guideOffsetY
-      }
-    }))
-  }
-
-  stopDragGuide = () => {
-    this.setState(state => ({
-      ...state,
-      isGuideDragging: undefined
-    }))
-  }
-
   render = () => {
     const { src, alt, hotspots } = this.props
     const {
@@ -346,13 +313,15 @@ class ImageHotspots extends React.Component {
       minimap,
       fullscreen,
       dragging,
-      isGuideDragging,
       hideFullscreenControl,
       hideZoomControls,
       hideHotspots,
       hideMinimap,
       draggable
     } = this.state
+    console.log('---')
+    console.log(image.offsetX, image.offsetY)
+    console.log(minimap.offsetX, minimap.offsetY)
     const imageLoaded = image.initialWidth && image.initialHeight
 
     const containerStyle = {
@@ -457,6 +426,7 @@ class ImageHotspots extends React.Component {
           <img
             src={src}
             alt={alt}
+            title={alt}
             onLoad={this.onImageLoad}
             style={imageStyle}
             onMouseDown={evt =>{
@@ -507,13 +477,7 @@ class ImageHotspots extends React.Component {
                     { src &&
                     <img src={src} width={minimapStyle.width} height={minimapStyle.height} />
                     }
-                    <div style={guideStyle} onMouseDown={evt => this.startDrag(evt, 'guide')}
-                      onMouseMove={evt => {
-                        if (isGuideDragging) {
-                          this.whileDragGuide(evt, guideStyle, minimapStyle)
-                        }
-                      }}
-                      onMouseUp={this.stopDragGuide} />
+                    <div style={guideStyle} />
                   </div>
               }
             </>
