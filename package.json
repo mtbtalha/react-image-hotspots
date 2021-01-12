@@ -15,7 +15,7 @@
     "build:storybook": "build-storybook -c .storybook -o docs",
     "prepublishOnly": "npm test && npm run build",
     "start": "start-storybook",
-    "install": "npm run build"
+    "prepare": "npm run build"
   },
   "repository": {
     "type": "git",
